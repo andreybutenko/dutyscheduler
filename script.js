@@ -1,11 +1,11 @@
-const config = {
+const defaultConfig = {
   scores: {
-    unavailableImpact: -50,     // score will be impacted if unavailable
-    targetDutyCountMetImpact: -100,  // score will be impacted if already met target duty count
-    belowAverageImpact: +50,    // score will be impacted if below-average duty assignments
+    unavailableImpact: -50,         // Impact on score if person is unavailable.
+    targetDutyCountMetImpact: -100, // Impact on score if person has already met target number of duties.
+    belowAverageImpact: +50,        // Impact on score if person is assigned to a below-average amount of duties at a given time.
     recentDuty: {
-      dayBeforeImpact: -20,     // score will be impacted if on duty the night before
-      numDaysImpact: 2          // score will be impacted if on duty within this many days
+      dayBeforeImpact: -20,         // Impact on score if person has recently been on duty.
+      numDaysImpact: 2              // How many days score will be impacted if a person was recently on duty.
     }
   }
 }
@@ -147,7 +147,7 @@ class Person {
   /**
    * Get number of days since the person's last duty assignment.
    * @param {number} dayIndex Day index from which to count.
-   * @returns {number} Number of days since the person's last duty assignment. Returns 999 if never assigned.
+   * @returns {number} Number of days since the person's last duty assignment. Returns 999 if never.
    */
   getNumDaysSincePreviousDuty(dayIndex) {
     for(let i = dayIndex - 1; i >= 0; i--) {
@@ -174,21 +174,24 @@ class Person {
 
     // Reduce score if already met target number of duty shifts
     if(this.getNumDutiesOfType(typeIndex) >= this.dutySet.getTargetNumDutiesOfType(typeIndex)) {
-      score += config.scores.targetDutyCountMetImpact;
+      score += this.dutySet.getConfig().scores.targetDutyCountMetImpact;
     }
 
     // Reduce score if recently on duty
-    const recentDutyImpactPerDay = config.scores.recentDuty.dayBeforeImpact / config.scores.recentDuty.numDaysImpact;
-    score += Math.max(config.scores.recentDuty.numDaysImpact + 1 - this.getNumDaysSincePreviousDuty(dayIndex), 0) * recentDutyImpactPerDay;
+    const recentDutyImpactPerDay = this.dutySet.getConfig().scores.recentDuty.dayBeforeImpact /
+      this.dutySet.getConfig().scores.recentDuty.numDaysImpact;
+    score += Math.max(this.dutySet.getConfig().scores.recentDuty.numDaysImpact + 1 -
+      this.getNumDaysSincePreviousDuty(dayIndex), 0) * recentDutyImpactPerDay;
 
     // Reduce score if unavailable
     if(this.availability[dayIndex] === false) {
-      score += config.scores.unavailableImpact;
+      score += this.dutySet.getConfig().scores.unavailableImpact;
     }
 
     // Increase score if you have below-average amount of duty assignments
     if(averageDutyAssignments[typeIndex] > this.getNumDutiesOfType(typeIndex)) {
-      score += (averageDutyAssignments[typeIndex] - this.getNumDutiesOfType(typeIndex)) * config.scores.belowAverageImpact;
+      score += (averageDutyAssignments[typeIndex] - this.getNumDutiesOfType(typeIndex)) *
+        this.dutySet.getConfig().scores.belowAverageImpact;
     }
 
     // Make score unviable if already on duty that day for a different duty type.
@@ -221,11 +224,30 @@ class DutySet {
    * Constructor for a DutySet.
    * @param {number} numDays Number of days that RAs are on duty in this set.
    * @param {number} numOnDuty Number of RAs that are on duty each night.
+   * @param {Object} [config] Optional custom config.
+   * @param {number} [config.scores.unavailableImpact] Impact on score if person is unavailable.
+   * @param {number} [config.scores.targetDutyCountMetImpact] Impact on score if person has already
+   *  met target number of duties.
+   * @param {number} [config.scores.belowAverageImpact] Impact on score if person is assigned to a 
+   *  below-average amount of duties at a given time.
+   * @param {number} [config.scores.recentDuty.dayBeforeImpact] Impact on score if person has
+   *  recently been on duty.
+   * @param {number} [config.scores.recentDuty.numDaysImpact] How many days score will be impacted
+   *  if a person was recently on duty.
    */
-  constructor(numDays, numOnDuty) {
+  constructor(numDays, numOnDuty, config) {
     this.numDays = numDays;
     this.numDutyTypes = numOnDuty;
     this.persons = [];
+    this.config = { ...defaultConfig, ...config };
+  }
+
+  /**
+   * Get config for the duty set.
+   * @returns {Object} See DutySet constructor for shape.
+   */
+  getConfig() {
+    return this.config;
   }
 
   /**
