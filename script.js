@@ -127,12 +127,21 @@ class Person {
   }
 
   /**
-   * Get the individual's duty assignments.
-   * @returns {Array<number>} Array of assignments where index is the day and value is -1 if not
-   *  assigned and a typeIndex otherwise.
+   * Get the person's duty availability for a given day.
+   * @param {number} dayIndex Day for which to get duty availability;
+   * @returns {boolean}
    */
-  getAssignments() {
-    return this.assignments;
+  getAvailabilityForDay(dayIndex) {
+    return this.availability[dayIndex];
+  }
+
+  /**
+   * Get the person's duty assignment for a given day.
+   * @param {number} dayIndex Day for which to get a duty assignment.
+   * @returns {number} Duty type for the day. -1 if not assigned.
+   */
+  getAssignmentForDay(dayIndex) {
+    return this.assignments[dayIndex];
   }
 
   /**
@@ -263,6 +272,7 @@ class DutySet {
   /**
    * Calculate a schedule by comparing persons's duty scores.
    * @param {boolean} [debug] Whether to log debug details. False by default.
+   * @return {Array<Array<string>>} Result of getSchedule()
    */
   calculateSchedule(debug) {
     for(let dutyType = 0; dutyType < this.numDutyTypes; dutyType++) {      
@@ -281,11 +291,54 @@ class DutySet {
         }
       }
     }
+    
+    return this.getSchedule();
+  }
+
+  /**
+   * Get availabilities of persons in the duty set.
+   * @returns {Array<Array<string>>} Returns an array where indices are days and values are the
+   *  names of persons available on that day.
+   */
+  getAvailabilities() {
+    const res = [];
+    for(let i = 0; i < this.numDays; i++) {
+      const day = [];
+      for(let j = 0; j < this.persons.length; j++) {
+        const available = this.persons[j].getAvailabilityForDay(i);
+        if(available) {
+          day.push(this.persons[j].getName());
+        }
+      }
+      res[i] = day;
+    }
+    return res;
+  }
+
+  /**
+   * Get duty schedule. Only returns meaningful values after calling calculateSchedule()
+   * @returns {Array<Array<string>>} Returns an array where indices are days and values are the
+   *  names of persons assigned to that day.
+   */
+  getSchedule() {
+    const res = [];
+    for(let i = 0; i < this.numDays; i++) {
+      const day = [];
+      for(let j = 0; j < this.persons.length; j++) {
+        const assignment = this.persons[j].getAssignmentForDay(i);
+        if(assignment !== -1) {
+          day[assignment] = this.persons[j].getName();
+        }
+      }
+      res[i] = day;
+    }
+    return res;
   }
 }
 
 const dutySet = new DutySet(6, 2);
 dutySet.addPerson(new Person('Andrey', [false, true, true, true, false, true], dutySet));
 dutySet.addPerson(new Person('Korra', [true, false, false, false, true, true], dutySet));
-dutySet.addPerson(new Person('Anna', [false, false, false, false, false, false], dutySet));
-dutySet.calculateSchedule(true);
+dutySet.addPerson(new Person('Anna', [false, true, false, true, false, false], dutySet));
+console.log('SCHEDULE: ', dutySet.calculateSchedule(true));
+console.log('AVAILABLE: ', dutySet.getAvailabilities());
