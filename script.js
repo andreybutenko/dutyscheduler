@@ -233,108 +233,33 @@ class DutySet {
   addPerson(person) {
     this.persons.push(person);
   }
+
+  /**
+   * Calculate a schedule by comparing persons's duty scores.
+   * @param {boolean} [debug] Whether to log debug details. False by default.
+   */
+  calculateSchedule(debug) {
+    for(let i = 0; i < this.numDays; i++) {
+      const averageDutyAssignments = calculateDutyAverage(this.persons, this.numDutyTypes);
+    
+      const scores = this.persons.map(person => person.getDutyScoreOfType(i, 0, averageDutyAssignments));
+      const highestScoreIndex = scores.indexOf(Math.max(...scores));
+      this.persons[highestScoreIndex].setAssignment(i, 0);
+
+      if(debug === true) {
+        console.log(`Day ${i}: ${highestScoreIndex}/${this.persons[highestScoreIndex].getName()}`, averageDutyAssignments, scores);
+      }
+    }
+  }
 }
 
 const dutySet = new DutySet(6, 1);
-dutySet.addPerson(null);
-dutySet.addPerson(null);
-dutySet.addPerson(null);
-const exp = 2;
-const andrey = new Person('Andrey', [false, true, true, true, false, true], dutySet);
-const korra = new Person('Korra', [true, false, false, false, true, true], dutySet);
-const anna = new Person('Anna', [false, false, false, false, false, false], dutySet)
-
-const persons = [andrey, korra, anna];
-
-for(let i = 0; i < 6; i++) {
-  const averageDutyAssignments = calculateDutyAverage(persons, 2);
-
-  const scores = persons.map(person => person.getDutyScoreOfType(i, 0, averageDutyAssignments));
-  const highestScoreIndex = scores.indexOf(Math.max(...scores));
-  console.log(`Day ${i}: ${highestScoreIndex}/${persons[highestScoreIndex].getName()}`, averageDutyAssignments, scores);
-  persons[highestScoreIndex].setAssignment(i, 0);
-}
-
-
-
-
-
-
-class DutySet2 {
-  /**
-   * Constructor for a DutySet.
-   * @param {number} numDays Number of days that RAs are on duty in this set.
-   * @param {number} numOnDuty Number of RAs that are on duty each night.
-   * @param {Object.<string, Array<boolean>} availabilities Object of RA availabilities. Keys are
-   *  RA names and values are arrays indicating for which days the RA is available. These arrays
-   *  are looped/recycled to match the length of numDays.
-   */
-  constructor(numDays, numOnDuty, availabilities) {
-    this.numDays = numDays;
-    this.numOnDuty = numOnDuty;
-    this.raNames = Object.keys(availabilities);
-    this.dailyAvailability = this.calculateDailyAvailabilities(Object.values(availabilities));
-    this.assignments = this.calculateAssignments(this.dailyAvailability, this.raNames.length);
-  }
-
-  calculateDailyAvailabilities(availabilities) {
-    const dailyAvailability = [];
-
-    for(let i = 0; i < this.numDays; i++) {
-      const day = [];
-
-      for(let j = 0; j < availabilities.length; j++) {
-        const raAvailability = availabilities[j];
-        // Loop/recycle values in availability arrays to match numDays length.
-        if(raAvailability[i % raAvailability.length] === true) {
-          day.push(j);
-        }
-      } 
-
-      dailyAvailability[i] = day;
-    }
-
-    return(dailyAvailability);
-  }
-
-  calculateDutyScore(raId, prevAssignment, dayAvailability) {
-    let score = 0;
-    if(prevDay.includes(raId)) {
-      score -= 100;
-    }
-
-// how many times they have been primary, secondary, etc
-  }
-
-  calculateAssignments(dailyAvailability, numRA) {
-    // Reset assignments array to an empty state with null values.
-    const assignments = calculateArray(this.numDays,
-      () => createFilledArray(this.numOnDuty, null)
-    );
-
-    for(let i = 0; i < assignments.length; i++) {
-      const prevAssignment = i > 0 ? assignments[i - 1] : [];
-      const dayAvailability = dailyAvailability[i];
-      const day = assignments[i];
-
-      calculateArray(numRA,
-        (raId) => {
-          return 
-        }
-      )
-    }
-
-    return(assignments);
-  }
-}
+dutySet.addPerson(new Person('Andrey', [false, true, true, true, false, true], dutySet));
+dutySet.addPerson(new Person('Korra', [true, false, false, false, true, true], dutySet));
+dutySet.addPerson(new Person('Anna', [false, false, false, false, false, false], dutySet));
+dutySet.calculateSchedule(true);
 
 /*
-const avail = {
-  Andrey: [true, false, true, false, false],
-  Korra: [true, true, false, false, true],
-  John: [true, true, false, false, true]
-}
-
-const weekdays = new DutySet(10, 2, avail);
-//console.log(weekdays)
+  // Loop/recycle values in availability arrays to match numDays length.
+  raAvailability[i % raAvailability.length]
 */
