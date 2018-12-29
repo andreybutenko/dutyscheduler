@@ -1,0 +1,64 @@
+class DutySet {
+  /**
+   * Constructor for a DutySet.
+   * @param {number} numDays Number of days that RAs are on duty in this set.
+   * @param {number} numOnDuty Number of RAs that are on duty each night.
+   * @param {Object.<string, Array<boolean>} availabilities Object of RA availabilities. Keys are
+   *  RA names and values are arrays indicating for which days the RA is available. These arrays
+   *  are looped/recycled to match the length of numDays.
+   */
+  constructor(numDays, numOnDuty, availabilities) {
+    this.numDays = numDays;
+    this.numOnDuty = numOnDuty;
+    this.raNames = Object.keys(availabilities);
+    this.dailyAvailability = this.calculateDailyAvailabilities(Object.values(availabilities));
+    this.assignments = this.calculateAssignments(this.dailyAvailability, this.raNames.length);
+  }
+
+  calculateDailyAvailabilities(availabilities) {
+    const dailyAvailability = [];
+
+    for(let i = 0; i < this.numDays; i++) {
+      const day = [];
+
+      for(let j = 0; j < availabilities.length; j++) {
+        const raAvailability = availabilities[j];
+        // Loop/recycle values in availability arrays to match numDays length.
+        if(raAvailability[i % raAvailability.length] === true) {
+          day.push(j);
+        }
+      } 
+
+      dailyAvailability[i] = day;
+    }
+
+    return(dailyAvailability);
+  }
+
+  calculateAssignments(dailyAvailability, numRA) {
+    // Reset assignments array to an empty state with null values.
+    const assignments = [];
+    for(let i = 0; i < this.numDays; i++) {
+      assignments[i] = [];
+
+      for(let j = 0; j < this.numOnDuty; j++) {
+        assignments[i][j] = null;
+      }
+    }
+
+    for(let i = 0; i < assignments.length; i++) {
+      
+    }
+
+    return(assignments);
+  }
+}
+
+const avail = {
+  Andrey: [true, false, true, false, false],
+  Korra: [true, true, false, false, true],
+  John: [true, true, false, false, true]
+}
+
+const weekdays = new DutySet(10, 1, avail);
+console.log(weekdays)
