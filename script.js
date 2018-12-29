@@ -1,7 +1,6 @@
 const config = {
   scores: {
     unavailableImpact: -50,     // score will be impacted if unavailable
-    targetDutyNotMetImpactPerDay: 5,  // score will be impacted if not yet met duty count
     targetDutyCountMetImpact: -100,  // score will be impacted if already met target duty count
     belowAverageImpact: +50,    // score will be impacted if below-average duty assignments
     recentDuty: {
@@ -59,13 +58,11 @@ function calculateDutyAverage(persons, numDutyTypes) {
 }
 
 class Person {
-  constructor(name, numOnDuty, numDutyTypes, availability, targetNumDuties) {
+  constructor(name, availability, dutySet) {
     this.name = name;
-    this.numOnDuty = numOnDuty; // TODO value should be fetched
-    this.numDutyTypes = numDutyTypes; // TODO value should be fetched
     this.availability = availability;
-    this.assignments = createFilledArray(-1, availability.length);
-    this.targetNumDuties = targetNumDuties; // TODO value should be calculated
+    this.dutySet = dutySet;
+    this.assignments = createFilledArray(-1, dutySet.getNumDays());
   }
 
   /**
@@ -81,12 +78,11 @@ class Person {
    * @returns {Array<number>} Array of numbers, where index is duty type and value is number of assignments.
    */
   getNumDuties() {
-    const res = createFilledArray(0, this.numDutyTypes);
+    const res = createFilledArray(0, this.dutySet.getNumDutyTypes());
     for(let i = 0; i < this.assignments.length; i++) {
       if(this.assignments[i] != -1) {
         res[this.assignments[i]]++;
       }
-
     }
     return res;
   }
@@ -99,14 +95,11 @@ class Person {
     return this.getNumDuties()[typeIndex];
   }
 
-  getTargetNumDuties() {
-    return this.targetNumDuties;
-  }
-
-  getTargetNumDutiesOfType(typeIndex) {
-    return this.targetNumDuties[typeIndex];
-  }
-
+  /**
+   * Get the individual's duty assignments.
+   * @returns {Array<number>} Array of assignments where index is the day and value is -1 if not
+   *  assigned and a typeIndex otherwise.
+   */
   getAssignments() {
     return this.assignments;
   }
@@ -144,11 +137,8 @@ class Person {
     let score = 100;
 
     // Reduce score if already met target number of duty shifts
-    if(this.getNumDutiesOfType(typeIndex) >= this.getTargetNumDutiesOfType(typeIndex)) {
+    if(this.getNumDutiesOfType(typeIndex) >= this.dutySet.getTargetNumDutiesOfType(typeIndex)) {
       score += config.scores.targetDutyCountMetImpact;
-    }
-    else {
-      score += (this.getTargetNumDutiesOfType(typeIndex) - this.getNumDutiesOfType(typeIndex)) * config.scores.targetDutyNotMetImpactPerDay * (6 - dayIndex);
     }
 
     // Reduce score if recently on duty
@@ -169,6 +159,13 @@ class Person {
   }
 
   /**
+   * Resets a person's duty assignments.
+   */
+  resetAssignments() {
+    this.assignments = createFilledArray(-1, availability.length);
+  }
+
+  /**
    * Assign person to duty type on a particular day.
    * @param {number} dayIndex Index of the current day.
    * @param {number} type Duty type to assign.
@@ -184,15 +181,73 @@ function testLog(person) {
   }
 }
 
+class DutySet {
+  /**
+   * Constructor for a DutySet.
+   * @param {number} numDays Number of days that RAs are on duty in this set.
+   * @param {number} numOnDuty Number of RAs that are on duty each night.
+   */
+  constructor(numDays, numOnDuty) {
+    this.numDays = numDays;
+    this.numDutyTypes = numOnDuty;
+    this.persons = [];
+  }
+
+  /**
+   * Get number of duty days in the set.
+   * @returns {number}
+   */
+  getNumDays() {
+    return this.numDays;
+  }
+
+  /**
+   * Get number of duty types. In other words, the number of persons on duty each night.
+   * @returns {number}
+   */
+  getNumDutyTypes() {
+    return this.numDutyTypes;
+  }
+  
+  /**
+   * Calculate target number of duties for each individual for each duty type.
+   * @returns {Array<number>}
+   */
+  getTargetNumDuties() {
+    const targetNumDuties = this.numDutyTypes * this.numDays / this.persons.length;
+    return createFilledArray(targetNumDuties, this.numDutyTypes);
+  }
+
+  /**
+   * Calculate target number of duties for each individual for a particular duty type.
+   * @returns {number}
+   */
+  getTargetNumDutiesOfType(typeIndex) {
+    return this.getTargetNumDuties()[typeIndex];
+  }
+
+  /**
+   * Add a person to the duty set.
+   * @param {Person} person 
+   */
+  addPerson(person) {
+    this.persons.push(person);
+  }
+}
+
+const dutySet = new DutySet(6, 1);
+dutySet.addPerson(null);
+dutySet.addPerson(null);
+dutySet.addPerson(null);
 const exp = 2;
-const andrey = new Person('Andrey', 6, 2, [false, true, true, true, false, true], [exp, exp]);
-const korra = new Person('Korra', 6, 2, [true, false, false, false, true, true], [exp, exp]);
-const anna = new Person('Anna', 6, 2, [false, false, false, false, false, false], [exp, exp])
+const andrey = new Person('Andrey', [false, true, true, true, false, true], dutySet);
+const korra = new Person('Korra', [true, false, false, false, true, true], dutySet);
+const anna = new Person('Anna', [false, false, false, false, false, false], dutySet)
 
 const persons = [andrey, korra, anna];
 
 for(let i = 0; i < 6; i++) {
-  const averageDutyAssignments = calculateDutyAverage(persons);
+  const averageDutyAssignments = calculateDutyAverage(persons, 2);
 
   const scores = persons.map(person => person.getDutyScoreOfType(i, 0, averageDutyAssignments));
   const highestScoreIndex = scores.indexOf(Math.max(...scores));
