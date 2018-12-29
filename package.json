@@ -1,5 +1,5 @@
 {
-  "name": "dutyscheduler",
+  "name": "@andreybutenko/dutyscheduler",
   "version": "1.0.0",
   "description": "A Javascript library for creating duty schedules.",
   "main": "index.js",
