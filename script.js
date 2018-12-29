@@ -57,6 +57,30 @@ function calculateDutyAverage(persons, numDutyTypes) {
     .map(num => num / persons.length);
 }
 
+/**
+ * Sort array in descending order and get array of indices corresponding with positions of original elements.
+ * @param {Array<number>} arr Array of values to sort.
+ * @returns {Array<number>} Array of indices.
+ */
+function sortIndicesDescending(arr) {
+  const res = createFilledArray(-1, arr.length);
+  let highestIndex, highestValue;
+  for(let i = 0; i < res.length; i++) {
+    highestIndex = -1;
+    highestValue = Math.min(...arr) - 1;
+    for(let j = 0; j < arr.length; j++) {
+      if(!res.includes(j)) {
+        if(arr[j] > highestValue) {
+          highestValue = arr[j];
+          highestIndex = j;
+        }
+      }
+    }
+    res[i] = highestIndex;
+  }
+  return res;
+}
+
 class Person {
   /**
    * Creates a person with a given availability which is then considered in producing a duty set schedule.
@@ -158,6 +182,11 @@ class Person {
       score += (averageDutyAssignments[typeIndex] - this.getNumDutiesOfType(typeIndex)) * config.scores.belowAverageImpact;
     }
 
+    // Make score unviable if already on duty that day for a different duty type.
+    if(this.assignments[dayIndex] !== -1 && this.assignments[dayIndex] !== typeIndex) {
+      score -= 10000;
+    }
+
     return score;
   }
 
@@ -211,7 +240,7 @@ class DutySet {
    * @returns {Array<number>}
    */
   getTargetNumDuties() {
-    const targetNumDuties = this.numDutyTypes * this.numDays / this.persons.length;
+    const targetNumDuties = this.numDays / this.persons.length;
     return createFilledArray(targetNumDuties, this.numDutyTypes);
   }
 
@@ -236,21 +265,26 @@ class DutySet {
    * @param {boolean} [debug] Whether to log debug details. False by default.
    */
   calculateSchedule(debug) {
-    for(let i = 0; i < this.numDays; i++) {
-      const averageDutyAssignments = calculateDutyAverage(this.persons, this.numDutyTypes);
-    
-      const scores = this.persons.map(person => person.getDutyScoreOfType(i, 0, averageDutyAssignments));
-      const highestScoreIndex = scores.indexOf(Math.max(...scores));
-      this.persons[highestScoreIndex].setAssignment(i, 0);
+    for(let dutyType = 0; dutyType < this.numDutyTypes; dutyType++) {      
+      for(let i = 0; i < this.numDays; i++) {
+        const averageDutyAssignments = calculateDutyAverage(this.persons, this.numDutyTypes);
+      
+        const scores = this.persons.map(person => person.getDutyScoreOfType(i, dutyType, averageDutyAssignments));
+        const highestScoreIndices = sortIndicesDescending(scores);
+        this.persons[highestScoreIndices[0]].setAssignment(i, dutyType);
 
-      if(debug === true) {
-        console.log(`Day ${i}: ${highestScoreIndex}/${this.persons[highestScoreIndex].getName()}`, averageDutyAssignments, scores);
+        if(debug === true) {
+          console.log(
+            `Day ${i}, #${dutyType}: ${this.persons[highestScoreIndices[0]].getName()}`,
+            scores
+          );
+        }
       }
     }
   }
 }
 
-const dutySet = new DutySet(12, 1);
+const dutySet = new DutySet(6, 2);
 dutySet.addPerson(new Person('Andrey', [false, true, true, true, false, true], dutySet));
 dutySet.addPerson(new Person('Korra', [true, false, false, false, true, true], dutySet));
 dutySet.addPerson(new Person('Anna', [false, false, false, false, false, false], dutySet));
