@@ -3,6 +3,7 @@ const config = {
     unavailableImpact: -50,     // score will be impacted if unavailable
     targetDutyNotMetImpactPerDay: 5,  // score will be impacted if not yet met duty count
     targetDutyCountMetImpact: -100,  // score will be impacted if already met target duty count
+    belowAverageImpact: +50,    // score will be impacted if below-average duty assignments
     recentDuty: {
       dayBeforeImpact: -20,     // score will be impacted if on duty the night before
       numDaysImpact: 2          // score will be impacted if on duty within this many days
@@ -26,12 +27,27 @@ function calculateArray(valueFunction, length) {
   return arr;
 }
 
+/**
+ * Calculate average amount of duties in a set of persons.
+ * @param {Array<Person>} persons 
+ */
+function calculateDutyAverage(persons, numDutyTypes) {
+  return persons
+    .map(person => person.getNumDuties())
+    .reduce((accumulator, person) => {
+      for(let i = 0; i < accumulator.length; i++) {
+        accumulator[i] += person[i];
+      }
+      return accumulator;
+    }, createFilledArray(0, numDutyTypes))
+    .map(num => num / persons.length);
+}
+
 class Person {
   constructor(name, numOnDuty, numDutyTypes, availability, targetNumDuties) {
     this.name = name;
     this.numOnDuty = numOnDuty; // TODO value should be fetched
     this.numDutyTypes = numDutyTypes; // TODO value should be fetched
-    this.numDuties = createFilledArray(0, numOnDuty);
     this.availability = availability;
     this.assignments = createFilledArray(-1, availability.length);
     this.targetNumDuties = targetNumDuties; // TODO value should be calculated
@@ -42,11 +58,20 @@ class Person {
   }
 
   getNumDuties() {
-    return this.numDuties;
+    const res = createFilledArray(0, this.numDutyTypes);
+    for(let i = 0; i < this.assignments.length; i++) {
+      //console.log('HLLO')
+      //console.log(`${this.name}: ${this.assignments[i]}@${i}`)
+      if(this.assignments[i] != -1) {
+        res[this.assignments[i]]++;
+      }
+
+    }
+    return res;
   }
 
   getNumDutiesOfType(typeIndex) {
-    return this.numDuties[typeIndex];
+    return this.getNumDuties()[typeIndex];
   }
 
   getTargetNumDuties() {
@@ -75,7 +100,7 @@ class Person {
     return calculateArray(typeIndex => this.getDutyScoreOfType(dayIndex, typeIndex), this.numDutyTypes);
   }
 
-  getDutyScoreOfType(dayIndex, typeIndex) {
+  getDutyScoreOfType(dayIndex, typeIndex, averageDutyAssignments) {
     let score = 100;
 
     // Reduce score if already met target number of duty shifts
@@ -95,6 +120,11 @@ class Person {
       score += config.scores.unavailableImpact;
     }
 
+    // Increase score if you have below-average amount of duty assignments
+    if(averageDutyAssignments[typeIndex] > this.getNumDutiesOfType(typeIndex)) {
+      score += (averageDutyAssignments[typeIndex] - this.getNumDutiesOfType(typeIndex)) * config.scores.belowAverageImpact;
+    }
+
     return score;
   }
 
@@ -110,16 +140,18 @@ function testLog(person) {
 }
 
 const exp = 2;
-const andrey = new Person('Andrey', 6, 2, [false, true, true, true, true, true], [exp, exp]);
-const korra = new Person('Korra', 6, 2, [true, false, false, true, true, true], [exp, exp]);
-const anna = new Person('Anna', 8, 3, [false, false, false, false, false, false], [exp, exp])
+const andrey = new Person('Andrey', 6, 2, [false, true, true, true, false, true], [exp, exp]);
+const korra = new Person('Korra', 6, 2, [true, false, false, false, true, true], [exp, exp]);
+const anna = new Person('Anna', 6, 2, [false, false, false, false, false, false], [exp, exp])
 
 const persons = [andrey, korra, anna];
 
 for(let i = 0; i < 6; i++) {
-  const scores = persons.map(person => person.getDutyScoreOfType(i, 0));
+  const averageDutyAssignments = calculateDutyAverage(persons);
+
+  const scores = persons.map(person => person.getDutyScoreOfType(i, 0, averageDutyAssignments));
   const highestScoreIndex = scores.indexOf(Math.max(...scores));
-  console.log(`Day ${i}: ${highestScoreIndex}/${persons[highestScoreIndex].getName()}`, scores);
+  console.log(`Day ${i}: ${highestScoreIndex}/${persons[highestScoreIndex].getName()}`, averageDutyAssignments, scores);
   persons[highestScoreIndex].setAssignment(i, 0);
 }
 
