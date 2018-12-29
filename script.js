@@ -5,7 +5,7 @@ const defaultConfig = {
     belowAverageImpact: +50,        // Impact on score if person is assigned to a below-average amount of duties at a given time.
     recentDuty: {
       dayBeforeImpact: -20,         // Impact on score if person has recently been on duty.
-      numDaysImpact: 2              // How many days score will be impacted if a person was recently on duty.
+      numDaysEffect: 2              // How many days score will be impacted if a person was recently on duty.
     }
   }
 }
@@ -178,10 +178,9 @@ class Person {
     }
 
     // Reduce score if recently on duty
-    const recentDutyImpactPerDay = this.dutySet.getConfig().scores.recentDuty.dayBeforeImpact /
-      this.dutySet.getConfig().scores.recentDuty.numDaysImpact;
-    score += Math.max(this.dutySet.getConfig().scores.recentDuty.numDaysImpact + 1 -
-      this.getNumDaysSincePreviousDuty(dayIndex), 0) * recentDutyImpactPerDay;
+    if(this.getNumDaysSincePreviousDuty(dayIndex) <= this.dutySet.getConfig().scores.recentDuty.numDaysEffect) {
+      score += this.dutySet.getConfig().scores.recentDuty.dayBeforeImpact
+    }
 
     // Reduce score if unavailable
     if(this.availability[dayIndex] === false) {
@@ -232,14 +231,25 @@ class DutySet {
    *  below-average amount of duties at a given time.
    * @param {number} [config.scores.recentDuty.dayBeforeImpact] Impact on score if person has
    *  recently been on duty.
-   * @param {number} [config.scores.recentDuty.numDaysImpact] How many days score will be impacted
+   * @param {number} [config.scores.recentDuty.numDaysEffect] How many days score will be impacted
    *  if a person was recently on duty.
    */
   constructor(numDays, numOnDuty, config) {
     this.numDays = numDays;
     this.numDutyTypes = numOnDuty;
     this.persons = [];
-    this.config = { ...defaultConfig, ...config };
+    this.config = {
+      ...defaultConfig,
+      ...config,
+      scores: {
+        ...defaultConfig.scores,
+        ...(config || {}).scores,
+        recentDuty: {
+          ...defaultConfig.scores.recentDuty,
+        ...((config || {}).scores || {}).recentDuty,
+        }
+      }
+    };
   }
 
   /**
@@ -358,7 +368,8 @@ class DutySet {
   }
 }
 
-const dutySet = new DutySet(6, 2);
+const dutySet = new DutySet(6, 2, { scores: { recentDuty: { dayBeforeImpact: +10000 } } });
+console.log(dutySet.getConfig())
 dutySet.addPerson(new Person('Andrey', [false, true, true, true, false, true], dutySet));
 dutySet.addPerson(new Person('Korra', [true, false, false, false, true, true], dutySet));
 dutySet.addPerson(new Person('Anna', [false, true, false, true, false, false], dutySet));
