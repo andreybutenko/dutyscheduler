@@ -58,9 +58,16 @@ function calculateDutyAverage(persons, numDutyTypes) {
 }
 
 class Person {
+  /**
+   * Creates a person with a given availability which is then considered in producing a duty set schedule.
+   * @param {string} name Name of the person.
+   * @param {Array<boolean>} availability Array of the person's availability. Values are looped/recycled to
+   *  match the number of days in the duty set.
+   * @param {DutySet} dutySet The duty set the person is under.
+   */
   constructor(name, availability, dutySet) {
     this.name = name;
-    this.availability = availability;
+    this.availability = calculateArray(i => availability[i % availability.length], dutySet.getNumDays());
     this.dutySet = dutySet;
     this.assignments = createFilledArray(-1, dutySet.getNumDays());
   }
@@ -119,10 +126,6 @@ class Person {
     return 999;
   }
 
-  getDutyScores(dayIndex) {
-    return calculateArray(typeIndex => this.getDutyScoreOfType(dayIndex, typeIndex), this.numDutyTypes);
-  }
-
   /**
    * Gets a score of how suitable a person is to be assigned to duty for a particular day.
    * Considers their availability, days since their last duty, days remaining in the duty set,
@@ -172,12 +175,6 @@ class Person {
    */
   setAssignment(dayIndex, type) {
     this.assignments[dayIndex] = type;
-  }
-}
-
-function testLog(person) {
-  for(let i = 0; i < person.getAssignments().length; i++) {
-    console.log(i, person.getDutyScores(i));
   }
 }
 
@@ -253,13 +250,8 @@ class DutySet {
   }
 }
 
-const dutySet = new DutySet(6, 1);
+const dutySet = new DutySet(12, 1);
 dutySet.addPerson(new Person('Andrey', [false, true, true, true, false, true], dutySet));
 dutySet.addPerson(new Person('Korra', [true, false, false, false, true, true], dutySet));
 dutySet.addPerson(new Person('Anna', [false, false, false, false, false, false], dutySet));
 dutySet.calculateSchedule(true);
-
-/*
-  // Loop/recycle values in availability arrays to match numDays length.
-  raAvailability[i % raAvailability.length]
-*/
