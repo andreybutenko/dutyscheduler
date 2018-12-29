@@ -1,0 +1,11 @@
+{
+  "name": "dutyscheduler",
+  "version": "1.0.0",
+  "description": "A Javascript tool for creating duty schedules.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrey Butenko",
+  "license": "Apache-2.0"
+}
